@@ -1,24 +1,50 @@
 import React from "react";
 
-const DEFAULT_PLACEHOLDER_IMAGE =
-  "https://m.media-amazon.com/images/M/MV5BMTczNTI2ODUwOF5BMl5BanBnXkFtZTcwMTU0NTIzMw@@._V1_SX300.jpg";
+class Movie extends React.Component {
+  componentDidMount() {
+    console.log("mounted here", this.props.movieDetails);
+  }
+  render() {
+    const {
+      name,
+      premiered,
+      rating,
+      image,
+      genres,
+      summary,
+    } = this.props.movie;
 
-const Movie = ({ movie }) => {
-  const poster =
-    movie.Poster === "N/A" ? DEFAULT_PLACEHOLDER_IMAGE : movie.Poster;
-  return (
-    <div className="movie">
-      <h2>{movie.Title}</h2>
-      <div>
-        <img
-          width="200"
-          alt={`The movie titled: ${movie.Title}`}
-          src={poster}
-        />
+    // if (!Poster || Poster === "N/A") {
+    //   return null;
+    // }
+
+    return (
+      <div className="movie-card-container">
+        <div className="image-container">
+          <div
+            className="bg-image"
+            style={{ backgroundImage: `url(${image.original})` }}
+          />
+        </div>
+        <div className="movie-info">
+          <h2>Movie Details</h2>
+          <div>
+            <h1>{name}</h1>
+            <small>Released Date: {premiered}</small>
+          </div>
+          <h4>Rating: {rating.average} / 10</h4>
+          <p>
+            <span dangerouslySetInnerHTML={{ __html: summary }} />
+          </p>
+          <div className="tags-container">
+            {genres.map((g) => (
+              <span>{g}</span>
+            ))}
+          </div>
+        </div>
       </div>
-      <p>({movie.Year})</p>
-    </div>
-  );
-};
+    );
+  }
+}
 
 export default Movie;
