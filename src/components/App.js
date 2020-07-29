@@ -1,79 +1,122 @@
-import React, { useReducer, useEffect } from "react";
-
-import Header from "./Header";
+import React, { Fragment } from "react";
 import Movie from "./Movie";
-import spinner from "../assets/ajax-loader.gif";
-import Search from "./Search";
-import { initialState, reducer } from "../store/reducer";
+import EpisodeList from "./EpisodeList";
 import axios from "axios";
 
-const MOVIE_API_URL = "https://www.omdbapi.com/?s=man&apikey=4a3b711b";
+//BASE APP COMPONENT
+class App extends React.Component {
+  state = {
+    isLoading: false,
+    movie: {},
+    searchTerm: "",
+    episodes: [],
+    seasons: {},
+    selectedSeason: 1,
+  };
 
-const App = () => {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  search = (event) => {
+    event.preventDefault();
+    this.setState({
+      isLoading: true,
+    });
+    axios
+      .get(
+        `https://api.tvmaze.com/singlesearch/shows/?q=${
+          this.state.searchTerm
+        }&embed=episodes`
+      )
+      .then((res) => {
+        const {
+          _embedded,
+          name,
+          premiered,
+          rating,
+          image,
+          genres,
+          summary,
+        } = res.data;
 
-  useEffect(() => {
-    axios.get(MOVIE_API_URL).then(jsonResponse => {
-      dispatch({
-        type: "SEARCH_MOVIES_SUCCESS",
-        payload: jsonResponse.data.Search
+        const movie = {
+          name,
+          premiered,
+          rating,
+          image,
+          genres,
+          summary,
+        };
+
+        const { episodes } = _embedded;
+        const seasonObj = episodes.reduce((acc, value) => {
+          acc[value.season] = acc[value.season] || [];
+          acc[value.season].push(value);
+          return acc;
+        }, {});
+
+        this.setState({
+          episodes,
+          movie,
+          isLoading: false,
+          seasons: seasonObj,
+        });
       });
-    });
-  }, []);
-
-  // you can add this to the onClick listener of the Header component
-  const refreshPage = () => {
-    window.location.reload();
   };
 
-  const search = searchValue => {
-    dispatch({
-      type: "SEARCH_MOVIES_REQUEST"
+  handleChange = (event) => {
+    this.setState({
+      searchTerm: event.target.value,
     });
-
-    axios(`https://www.omdbapi.com/?s=${searchValue}&apikey=4a3b711b`).then(
-      jsonResponse => {
-        if (jsonResponse.data.Response === "True") {
-          dispatch({
-            type: "SEARCH_MOVIES_SUCCESS",
-            payload: jsonResponse.data.Search
-          });
-        } else {
-          dispatch({
-            type: "SEARCH_MOVIES_FAILURE",
-            error: jsonResponse.data.Error
-          });
-        }
-      }
-    );
   };
 
-  const { movies, errorMessage, loading } = state;
+  handleSelectChange = (event) => {
+    this.setState({
+      selectedSeason: event.target.value,
+    });
+  };
 
-  const retrievedMovies =
-    loading && !errorMessage ? (
-      <img className="spinner" src={spinner} alt="Loading spinner" />
-    ) : errorMessage ? (
-      <div className="errorMessage">{errorMessage}</div>
-    ) : (
-      movies.map((movie, index) => (
-        <Movie key={`${index}-${movie.Title}`} movie={movie} />
-      ))
-    );
+  render() {
+    const { episodes, isLoading, movie, seasons, selectedSeason } = this.state;
+    const displayedSeason = seasons[selectedSeason];
 
-  return (
-    <div className="App">
-      <div className="m-container">
-        <Header text="HOOKED" />
+    const options = [];
+    for (let index = 0; index < Object.entries(seasons).length; index++) {
+      const option = <option value={index + 1}> Season {index + 1}</option>;
+      options.push(option);
+    }
 
-        <Search search={search} />
-
-        <p className="App-intro">Sharing a few of our favourite movies</p>
-
-        <div className="movies">{retrievedMovies}</div>
+    return (
+      <div>
+        <h1>Movie Search App</h1>
+        <form onSubmit={this.search}>
+          <input
+            placeholder="Search for a movie"
+            onChange={this.handleChange}
+          />
+          <button type="submit">
+            <i className="fa fa-search" />
+          </button>
+        </form>
+        {isLoading && <p>Loading....</p>}
+        {!isLoading && episodes.length === 0 && (
+          <p>Enter some search term in the search input</p>
+        )}
+        {!isLoading && episodes.length > 0 && <Movie movie={movie} />}
+        {!isLoading && episodes.length > 0 && (
+          <Fragment>
+            <h3>Select seasons to see episodes</h3>
+            <select
+              value={this.state.selectedSeason}
+              onChange={this.handleSelectChange}
+            >
+              {options}
+            </select>
+          </Fragment>
+        )}
+        {!isLoading && episodes.length > 0 && (
+          <EpisodeList episodes={displayedSeason} />
+        )}
       </div>
-    </div>
-  );
-};
+    );
+  }
+}
 
 export default App;
